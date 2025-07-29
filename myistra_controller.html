@@ -1,0 +1,119 @@
+<!-- myistra_controller.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>myistra_controller</title>
+  <style>
+    button {
+      margin: 2px;
+    }
+    #controller_event_log {
+      width: 100%;
+      height: 480px;
+      overflow-y: auto;
+      border: 1px solid #ccc;
+      padding: 10px;
+      margin-top: 10px;
+      background: #f0f0f0;
+      font-size: 8px;
+    }
+    .log-entry {
+      white-space: pre-wrap;
+      margin-bottom: 10px;
+      padding: 5px;
+      border-bottom: 1px solid #ddd;
+    }
+    .log-entry.sent {
+      background: #eee;
+      color: #444;
+    }
+    .log-entry.received {
+      background: #fff;
+      color: #006400;
+    }
+    iframe {
+      width: 100%;
+      height: 640px;
+      border: 1px solid #ccc;
+      margin-top: 10px;
+    }
+  </style>
+</head>
+<body>
+  <h3>MyIstra Controller</h3>
+  <label><input type="checkbox" id="logSentCheckbox" checked> Log sent events</label>
+  <div id="controlButtons"></div>
+  <div id="controller_event_log"></div>
+  <iframe name="myistra_simulator" src="myistra_simulator.html"></iframe>
+
+  <script>
+    const actions = [
+      "CALL", "ANSWER", "DROP",
+      "ACD_LOGIN", "ACD_LOGOUT", "ACD_SELECTIVE_LOGIN", "ACD_SELECTIVE_LOGOUT",
+      "GET_ACD_PAUSE_REASONS", "ACD_PAUSE", "ACD_UNPAUSE",
+      "SET_USER_CLI", "GET_USER_CLIS", "GET_ACD_GROUPS",
+      "GET_INFO", "GET_CALLS", "FILL_CALL_INFO"
+    ];
+
+    const logSentCheckbox = document.getElementById('logSentCheckbox');
+    const log = document.getElementById('controller_event_log');
+
+    function generateUID() {
+      return 'uid-' + Math.random().toString(36).substr(2, 9);
+    }
+
+    function getPayload(action) {
+      const uid = generateUID();
+      const samples = {
+        CALL: { type: "CALL", number: "+123456789", uid },
+        ANSWER: { type: "ANSWER", lineID: "1", uid },
+        DROP: { type: "DROP", lineID: "1", uid },
+        ACD_LOGIN: { type: "ACD_LOGIN", uid },
+        ACD_LOGOUT: { type: "ACD_LOGOUT", uid },
+        ACD_SELECTIVE_LOGIN: { type: "ACD_SELECTIVE_LOGIN", groupID: "G1", uid },
+        ACD_SELECTIVE_LOGOUT: { type: "ACD_SELECTIVE_LOGOUT", groupID: "G1", uid },
+        GET_ACD_PAUSE_REASONS: { type: "GET_ACD_PAUSE_REASONS", uid },
+        ACD_PAUSE: { type: "ACD_PAUSE", acdPauseReasonID: "1", uid },
+        ACD_UNPAUSE: { type: "ACD_UNPAUSE", uid },
+        SET_USER_CLI: { type: "SET_USER_CLI", number: "+1987654321", uid },
+        GET_USER_CLIS: { type: "GET_USER_CLIS", search: "*", uid },
+        GET_ACD_GROUPS: { type: "GET_ACD_GROUPS", uid },
+        GET_INFO: { type: "GET_INFO", uid },
+        GET_CALLS: { type: "GET_CALLS", uid },
+        FILL_CALL_INFO: { type: "FILL_CALL_INFO", lineID: "1", label: "Support Call", url: "https://example.com/info", uid }
+      };
+      return samples[action];
+    }
+
+    function sendToSimulator(action) {
+      const payload = getPayload(action);
+      window.frames["myistra_simulator"].postMessage(payload, "*");
+
+      if (logSentCheckbox.checked) {
+        const entry = document.createElement("div");
+        entry.className = "log-entry sent";
+        entry.textContent = `[${new Date().toLocaleTimeString()}] Sent Event:\n${JSON.stringify(payload, null, 2)}`;
+        log.appendChild(entry);
+        log.scrollTop = log.scrollHeight;
+      }
+    }
+
+    window.addEventListener("message", (event) => {
+      const entry = document.createElement("div");
+      entry.className = "log-entry received";
+      entry.textContent = `[${new Date().toLocaleTimeString()}] Received Event:\n${JSON.stringify(event.data, null, 2)}`;
+      log.appendChild(entry);
+      log.scrollTop = log.scrollHeight;
+    });
+
+    const controlContainer = document.getElementById("controlButtons");
+    actions.forEach(action => {
+      const btn = document.createElement("button");
+      btn.textContent = `Trigger ${action}`;
+      btn.onclick = () => sendToSimulator(action);
+      controlContainer.appendChild(btn);
+    });
+  </script>
+</body>
+</html>

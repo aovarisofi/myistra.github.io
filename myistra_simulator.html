@@ -1,0 +1,106 @@
+<!-- myistra_simulator.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>myistra_simulator</title>
+  <style>
+    #myistra_incoming_event_log {
+      width: 100%;
+      height: 480px;
+      overflow-y: auto;
+      border: 1px solid #ccc;
+      padding: 10px;
+      margin-top: 10px;
+      background: #f0f0f0;
+    }
+    .log-entry {
+      white-space: pre-wrap;
+      margin-bottom: 10px;
+      padding: 5px;
+      border-bottom: 1px solid #ddd;
+      font-size: 8px;
+    }
+    .log-entry.sent {
+      background: #eee;
+      color: #444;
+    }
+    .log-entry.received {
+      background: #fff;
+      color: #006400;
+    }
+    button {
+      margin: 2px;
+    }
+  </style>
+</head>
+<body>
+  <h3>MyIstra Simulator</h3>
+
+  <label><input type="checkbox" id="logSentCheckbox" checked> Log sent events</label>
+  <div id="eventButtons"></div>
+
+  <div id="myistra_incoming_event_log"></div>
+
+  <script>
+    const acceptedEvents = [
+      "CALL", "ANSWER", "DROP",
+      "ACD_LOGIN", "ACD_LOGOUT", "ACD_SELECTIVE_LOGIN", "ACD_SELECTIVE_LOGOUT",
+      "GET_ACD_PAUSE_REASONS", "ACD_PAUSE", "ACD_UNPAUSE",
+      "SET_USER_CLI", "GET_USER_CLIS", "GET_ACD_GROUPS",
+      "GET_INFO", "GET_CALLS", "FILL_CALL_INFO"
+    ];
+
+    const outgoingEventTypes = [
+      "GENERAL_INFO", "GENERAL_EVENT", "AGENT_EVENT", "GROUP_EVENT", "CALL_EVENT", "HISTORY_EVENT"
+    ];
+
+    const log = document.getElementById('myistra_incoming_event_log');
+    const logSentCheckbox = document.getElementById('logSentCheckbox');
+
+    window.addEventListener("message", (event) => {
+      if (acceptedEvents.includes(event.data?.type)) {
+        const entry = document.createElement("div");
+        entry.className = "log-entry received";
+        entry.textContent = `[${new Date().toLocaleTimeString()}] Received Event:\n${JSON.stringify(event.data, null, 2)}`;
+        log.appendChild(entry);
+        log.scrollTop = log.scrollHeight;
+      }
+    });
+
+    function sendSimulatedEvent(type) {
+      const contentExamples = {
+        GENERAL_INFO: { enterprise: "Acme Inc.", displayName: "John Doe", telephonicState: "available", callerID: "1234", hasACDCapability: true, operator: { operatorStatus: "IDLE", operatorPaused: false, operatorPauseScheduled: false, operatorLoginTime: "1539176619563", operatorStatusTime: "1539176621384", operatorPauseReasonID: "0" } },
+        GENERAL_EVENT: { property: "telephonyState", value: "busy" },
+        AGENT_EVENT: { property: "status", value: "ready" },
+        GROUP_EVENT: [ { groupID: "G1", activeMember: true, active: true, isOpen: true, addressNumber: "1001", ringPattern: "sequential" } ],
+        CALL_EVENT: [ { linedID: "1", callID: "c123", state: "talking", number: "+123456789", label: "Support", viaLabel: "Main", viaNumber: "100", acdGroupID: "G1", service: "Helpdesk", terminal: "Terminal1", canDrop: true, canAnswer: false } ],
+        HISTORY_EVENT: { isIncoming: true, isMissed: false, isRejected: false, timestamp: new Date().toISOString(), remoteLabel: "Client", remoteNumber: "+123456789", calledLabel: "Agent", calledNumber: "1001", talkDuration: 120 }
+      };
+
+      const event = {
+        type,
+        content: contentExamples[type]
+      };
+
+      if (logSentCheckbox.checked) {
+        const entry = document.createElement("div");
+        entry.className = "log-entry sent";
+        entry.textContent = `[${new Date().toLocaleTimeString()}] Sent Event:\n${JSON.stringify(event, null, 2)}`;
+        log.appendChild(entry);
+        log.scrollTop = log.scrollHeight;
+      }
+
+      window.parent.postMessage(event, "*");
+    }
+
+    const btnContainer = document.getElementById("eventButtons");
+    outgoingEventTypes.forEach(type => {
+      const btn = document.createElement("button");
+      btn.textContent = `Send ${type}`;
+      btn.onclick = () => sendSimulatedEvent(type);
+      btnContainer.appendChild(btn);
+    });
+  </script>
+</body>
+</html>
